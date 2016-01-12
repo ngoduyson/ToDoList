@@ -1,6 +1,7 @@
 package sonyama.todolist;
 
 import android.app.AlertDialog;
+import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -14,7 +15,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import sonyama.todolist.data.TaskConTract;
 import sonyama.todolist.data.TaskDBHelper;
@@ -27,7 +27,7 @@ public class MainActivityFragment extends Fragment {
     TaskAdapter mTaskAdapter;
 
     // These indices are tied to TASKS_COLUMNS. If TASKS_COLUMNS changes, these must change.
-    static final int COLTASK_ID = 0;
+    static final int COL_TASK_ID = 0;
     static final int COL_TASK_NAME = 1;
 
     public MainActivityFragment() {
@@ -40,7 +40,7 @@ public class MainActivityFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
         //Find the listView
-        ListView listView = (listView) rootView.findViewById(R.id.listview_tasks);
+        ListView listView = (ListView) rootView.findViewById(R.id.listview_tasks);
 
         //Get DBHelper to read from database
         TaskDBHelper helper = new TaskDBHelper(getActivity());
@@ -84,6 +84,32 @@ public class MainActivityFragment extends Fragment {
                     public void onClick(DialogInterface dialogInterface, int i) {
                         //Get user input
                         String inputTask = inputField.getText().toString();
+
+                        //Get DBHelper to write to database
+                        TaskDBHelper helper = new TaskDBHelper(getActivity());
+                        SQLiteDatabase db = helper.getWritableDatabase();
+
+                        //Put in the values within a ContentValues
+                        ContentValues values = new ContentValues();
+                        values.clear();
+                        values.put(TaskConTract.TaskEntry.COLUMN_TASK, inputTask);
+
+                        //Insert the values into the Table for Tasks
+                        db.insertWithOnConflict(
+                                TaskConTract.TaskEntry.TABLE_NAME,
+                                null,
+                                values,
+                                SQLiteDatabase.CONFLICT_IGNORE
+                        );
+
+                        //Query database again to get updated data
+                        Cursor cursor = db.query(TaskConTract.TaskEntry.TABLE_NAME,
+                                new String[]{TaskConTract.TaskEntry._ID, TaskConTract.TaskEntry.COLUMN_TASK},
+                                null, null, null, null, null);
+
+                        //Swap old data with new data for display
+                        mTaskAdapter.swapCursor(cursor);
+
                     }
                 });
                 builder.setNegativeButton("Cancel", null);
